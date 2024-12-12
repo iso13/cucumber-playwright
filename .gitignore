@@ -9,3 +9,5 @@ allure-report/
 .DS_Store
 
 src/support/model/pretrained-model/weights.bin
+
+src/support/pretrained-model/model.json

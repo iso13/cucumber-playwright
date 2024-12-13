@@ -1,21 +1,26 @@
-// api.steps.ts
 import { Given, Then } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
 import { sendPostRequest, sendGetRequest } from '../support/api/apiHelper';
 
+// Define a more specific type for API responses
 type ApiResponse = {
-  data: Record<string, any>; // Define the structure of your API response
-  [key: string]: any; // Allow additional keys if needed
+  data: Record<string, unknown>; // More precise typing for response data
+  [key: string]: unknown; // Allow additional keys if needed
+};
+
+// Define type for DataTable argument
+type DataTable = {
+  rowsHash: () => Record<string, string>;
 };
 
 let response: ApiResponse;
 
 Given(
   'I send a POST request to {string} with the following data',
-  async function (endpoint: string, dataTable) {
+  async function (endpoint: string, dataTable: DataTable) {
     const data = dataTable.rowsHash();
     try {
-      response = await sendPostRequest(endpoint, data) as ApiResponse;
+      response = (await sendPostRequest(endpoint, data)) as ApiResponse;
     } catch (error) {
       throw new Error(`Failed to send POST request to ${endpoint}: ${error}`);
     }
@@ -24,7 +29,7 @@ Given(
 
 Given('I send a GET request to {string}', async function (endpoint: string) {
   try {
-    response = await sendGetRequest(endpoint) as ApiResponse;
+    response = (await sendGetRequest(endpoint)) as ApiResponse;
   } catch (error) {
     throw new Error(`Failed to send GET request to ${endpoint}: ${error}`);
   }

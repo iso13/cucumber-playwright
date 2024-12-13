@@ -64,8 +64,8 @@ export class StockPricePredictor {
 
   getInputForDate(date: string): number[] {
     // Convert date to match the format in CSV if needed
-    const formattedDate = moment(date, "MMM DD YYYY").isValid()
-      ? moment(date, "MMM DD YYYY").format("MMM DD YYYY")
+    const formattedDate = moment(date, 'MMM DD YYYY').isValid()
+      ? moment(date, 'MMM DD YYYY').format('MMM DD YYYY')
       : null;
   
     if (!formattedDate) {
@@ -81,7 +81,7 @@ export class StockPricePredictor {
     // If the date is in the future, use the most recent available data
     const latestData = this.trainingData[this.trainingData.length - 1];
     if (!latestData) {
-      throw new Error(`No data available for prediction.`);
+      throw new Error('No data available for prediction.');
     }
   
     console.log(`Using latest available data from ${latestData.date} for future prediction.`);

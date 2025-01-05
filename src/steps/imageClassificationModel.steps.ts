@@ -1,4 +1,4 @@
-// Step Definition for Validate Consistent Image Labeling
+// Step Definition for Validate Correct Image Labeling for Cats and Dogs
 import { Given, When, Then } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
 import * as tf from '@tensorflow/tfjs-node'; // Use tfjs-node for Node.js support
@@ -51,12 +51,12 @@ async function predictImageLabel(
 }
 
 // Load the pre-trained image classification model
-Given('a pre-trained image classification model is loaded', async () => {
+Given('a pre-trained image classification model for identifying cats and dogs is loaded', async () => {
   model = await loadImageClassificationModel();
 });
 
 // Input a set of known images and make predictions
-When('I input a set of known images', async () => {
+When('I input a set of images containing cats and dogs', async () => {
   predictions = [];
   for (const { image } of EXPECTED_LABELS) {
     const imagePath = path.join(KNOWN_IMAGES_DIR, image);
@@ -67,8 +67,8 @@ When('I input a set of known images', async () => {
 
 // Check if the predicted labels match the expected labels with a certain accuracy
 Then(
-  'the predicted labels should match the expected labels with at least {int}% accuracy',
-  (accuracyThreshold: number) => {
+  'each image should be correctly labeled as {string} or {string} with at least {int}% accuracy',
+  (label1: string, label2: string, accuracyThreshold: number) => {
     let correctPredictions = 0;
     for (const { image, label } of predictions) {
       const expectedLabel = EXPECTED_LABELS.find(
@@ -79,6 +79,14 @@ Then(
       }
     }
     const accuracy = (correctPredictions / EXPECTED_LABELS.length) * 100;
-    expect(accuracy).toBeGreaterThanOrEqual(accuracyThreshold);
+    console.log('Predictions:', predictions);
+    console.log(`Accuracy: ${accuracy}%`);
+
+    // Validation of labels
+    expect([label1, label2]).toContain('cat');
+    expect([label1, label2]).toContain('dog');
+
+    // Accuracy assertion
+    expect(accuracy >= accuracyThreshold).toBe(true);
   },
 );

@@ -1,5 +1,3 @@
-// /src/support/performance/loadTest.js
-
 // Import K6's HTTP module for sending HTTP requests, check for validations, and sleep for delays
 import http from "k6/http";
 import { check, sleep } from "k6";
@@ -7,12 +5,16 @@ import { check, sleep } from "k6";
 // Import HTML report generator for K6 from an external source
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 
-// Retrieve the number of virtual users and test duration from environment variables or set defaults
+// Retrieve test parameters from environment variables or set defaults
 const vus = __ENV.VUS ? parseInt(__ENV.VUS) : 1; // Default to 1 virtual user if VUS is not provided
 const duration = __ENV.DURATION ? __ENV.DURATION : "1s"; // Default to 1 second if DURATION is not provided
+const endpoint = __ENV.ENDPOINT || "/"; // Default to root if ENDPOINT is not provided
+const method = __ENV.METHOD || "GET"; // Default to GET if METHOD is not provided
 
-// Log the VU and duration values to confirm they are set correctly
+// Log the test parameters to confirm they are set correctly
 console.log(`Running load test with ${vus} virtual users for ${duration}`);
+console.log(`Endpoint: ${endpoint}`);
+console.log(`HTTP Method: ${method}`);
 
 // Export K6 test options, using dynamically set VUS and DURATION, and define performance thresholds
 export let options = {
@@ -26,8 +28,15 @@ export let options = {
 
 // Default function executed by each virtual user, performing the main HTTP request and checks
 export default function () {
-  // Send a GET request to the specified endpoint
-  const res = http.get("https://jsonplaceholder.typicode.com/posts");
+  let res;
+
+  // Send an HTTP request based on the specified method
+  if (method.toUpperCase() === "GET") {
+    res = http.get(`https://jsonplaceholder.typicode.com${endpoint}`);
+  } else {
+    console.error(`Unsupported HTTP method: ${method}`);
+    return;
+  }
 
   // Validate the response status and timing with checks
   const resultCheck = check(res, {

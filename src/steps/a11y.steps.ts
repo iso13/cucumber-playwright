@@ -44,7 +44,7 @@ When('I run the a11y check', async function () {
 });
 
 // Then step: Run accessibility check and handle/report violations
-Then('I should not see violations', async function () {
+Then('I should not see any violations', async function () {
   const results: AxeResults = await checka11y(this.page);
 
   const reportHtml = createHtmlReport({

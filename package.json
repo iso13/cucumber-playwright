@@ -12,6 +12,7 @@
     "cucumber": "cucumber-js --config cucumber.mjs --format cucumber-console-formatter --require \"src/steps/**/*.ts\"",
     "cucumber:dev": "cross-env ENV=dev cucumber-js --config cucumber.mjs --format cucumber-console-formatter --require 'src/steps/**/*.ts'",
     "cucumber:staging": "cross-env ENV=staging cucumber-js --config cucumber.mjs --format cucumber-console-formatter --require 'src/steps/**/*.ts'",
+    "validate-k6-report": "cat reports/performance/loadTest.json | jq",
     "build": "npx tsc",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
     "codegen": "playwright codegen",

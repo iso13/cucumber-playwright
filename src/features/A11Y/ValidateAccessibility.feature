@@ -10,7 +10,7 @@ Feature: Validate Accessibility
   Scenario: Validate a11y for a site
     Given I go to the following "https://www.a11yproject.com/"
     When I run the a11y check
-    Then I should not see violations
+    Then I should not see any violations
 
   @wip
   Scenario: Validate A11y on a specific element

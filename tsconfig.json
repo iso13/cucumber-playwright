@@ -25,6 +25,6 @@
   "include": [
     "src/**/*.ts",
     "gherkin-linter.ts",
-    "src/steps/**/*.ts" // Updated to ensure step definitions are included
+    "src/steps/**/**/*.ts" // Updated to ensure step definitions are included
   ]
 }

@@ -11,3 +11,5 @@ allure-report/
 src/support/model/pretrained-model/weights.bin
 
 src/support/pretrained-model/model.json
+
+src/support/apiKey

@@ -10,10 +10,11 @@
     ],
     "sourceMap": true,
     "outDir": "./build",
-    "noEmit": true,
     "strict": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
@@ -24,7 +25,6 @@
   },
   "include": [
     "src/**/*.ts",
-    "gherkin-linter.ts",
-    "src/steps/**/**/*.ts" // Updated to ensure step definitions are included
+    "gherkin-linter.ts"
   ]
 }

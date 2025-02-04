@@ -21,7 +21,7 @@
     "test:dev": "cross-env ENV=dev npx playwright test",
     "test:staging": "cross-env ENV=staging npx playwright test",
     "test": "cross-env ENV=qa npx playwright test",
-    "generate:feature": "ts-node src/support/scripts/generateFeature.ts"
+    "generate:feature": "npx ts-node src/scripts/generateFeatureFile.ts"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -83,7 +83,7 @@
     "read-excel-file": "5.8.6",
     "rimraf": "6.0.1",
     "standard-version": "9.5.0",
-    "ts-node": "10.9.2",
+    "ts-node": "^10.9.2",
     "tsc-files": "1.1.4",
     "typescript": "5.6.3"
   }

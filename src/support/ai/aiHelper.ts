@@ -15,13 +15,29 @@ const openai = new OpenAI({
  */
 export async function generateGherkinPrompt(prompt: string): Promise<string> {
     try {
+        console.log('Prompt sent to OpenAI:', prompt);  // Log the prompt being sent
+
         const response = await openai.chat.completions.create({
-            model: 'gpt-4',
+            model: 'gpt-3.5-turbo',
             messages: [{ role: 'user', content: prompt }],
+            max_tokens: 1500,
         });
-        return response.choices[0]?.message?.content || '';
+
+        console.log('OpenAI response received:', JSON.stringify(response, null, 2));  // Log the response object
+
+        // Check if the response contains choices
+        if (!response.choices || response.choices.length === 0) {
+            throw new Error('OpenAI returned an empty response.');
+        }
+
+        const generatedContent = response.choices[0]?.message?.content || '';
+        console.log('Generated Gherkin content:', generatedContent);  // Log the generated content
+
+        return generatedContent;
     } catch (error) {
         console.error('Error generating Gherkin content:', error);
-        throw new Error('Failed to generate content from OpenAI.');
+
+        // Throw a more detailed error message
+        throw new Error(`Failed to generate content from OpenAI: ${(error as any).message}`);
     }
 }

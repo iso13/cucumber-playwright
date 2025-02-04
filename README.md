@@ -1,3 +1,4 @@
+![BDD](docs/images/BDD.png)
 # cucumber-playwright
 
 # Cucumber Playwright Framework 🚀

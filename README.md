@@ -1,3 +1,4 @@
+![BDD](docs/images/BDD.png)
 # cucumber-playwright
 
 # Cucumber Playwright Framework 🚀
@@ -19,9 +20,10 @@ This repository hosts a robust and scalable **Cucumber Playwright** framework de
 ---
 
 ## Use Cases 🎯
+- **AI Feature**: Leverage AI to automatically generate Cucumber feature files, streamlining the creation of BDD scenarios and enhancing productivity.
 - **End-to-End Testing**: Validate the complete user journey across web applications.
 - **API Testing**: Automate API validations with reusable step definitions and dynamic payload management.
-- **Performance Testing**: Incorporate lightweight performance checks using the integrated k6 scripts.
+- **Performance Testing**: Incorporated k6 and Cucumber for running performance tests.
 - **Mobile and Desktop Testing**: Extend capabilities to test across mobile devices and desktop browsers.
 - **Accessibility (a11y) Testing**: Ensure digital accessibility compliance and create inclusive user experiences.
 - **AI/ML Support**: Validate and test AI/ML models with advanced capabilities and integrations.

@@ -15,3 +15,5 @@ src/support/pretrained-model/model.json
 src/support/apiKey
 
 .env
+
+.DS_Store

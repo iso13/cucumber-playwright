@@ -3,6 +3,14 @@ import path from 'path';
 import { writeFile, ensureDir } from 'fs-extra';
 import { generateGherkinPrompt } from '../support/ai/aiHelper';
 
+// Constants for configuration
+const CONFIG = {
+    MIN_SCENARIOS: 3,
+    MAX_SCENARIOS: 6,
+    FEATURE_EXT: '.feature',
+    FEATURES_DIR: '../features'
+} as const;
+
 /**
  * Converts a string to lower camel case.
  */
@@ -11,6 +19,15 @@ function toLowerCamelCase(input: string): string {
         .replace(/(?:^\w|[A-Z]|\b\w)/g, (word) => word.toUpperCase())
         .replace(/\s+/g, '');
     return pascalCase.charAt(0).toLowerCase() + pascalCase.slice(1);
+}
+
+/**
+ * Sanitizes a string for use as a file name.
+ */
+function sanitizeFileName(input: string): string {
+    return input
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .replace(/\s+/g, '');
 }
 
 /**
@@ -48,15 +65,21 @@ async function promptForFeatureAndGenerate() {
                 type: 'input',
                 name: 'featureTitle',
                 message: 'Enter the feature title:',
+                validate: (input: string) => {
+                    if (!input.trim()) {
+                        return 'Feature title cannot be empty.';
+                    }
+                    return true;
+                },
             },
             {
                 type: 'input',
                 name: 'scenarioCount',
-                message: 'Enter the number of scenarios (between 3 and 6):',
+                message: `Enter the number of scenarios (between ${CONFIG.MIN_SCENARIOS} and ${CONFIG.MAX_SCENARIOS}):`,
                 validate: (input: string) => {
                     const value = parseInt(input, 10);
-                    if (isNaN(value) || value < 3 || value > 6) {
-                        return 'Please enter a valid number between 3 and 6.';
+                    if (isNaN(value) || value < CONFIG.MIN_SCENARIOS || value > CONFIG.MAX_SCENARIOS) {
+                        return `Please enter a valid number between ${CONFIG.MIN_SCENARIOS} and ${CONFIG.MAX_SCENARIOS}.`;
                     }
                     return true;
                 },
@@ -98,8 +121,9 @@ async function promptForFeatureAndGenerate() {
         const fullFeatureContent = featureHeader + gherkinContent;
 
         // Define the correct feature path
-        const featuresDir = path.resolve(__dirname, '../features');
-        const featureFileName = `${featureTitle.replace(/\s+/g, '')}.feature`;
+        const featuresDir = path.resolve(__dirname, CONFIG.FEATURES_DIR);
+        const safeFileName = sanitizeFileName(featureTitle);
+        const featureFileName = `${safeFileName}${CONFIG.FEATURE_EXT}`;
         const featureFilePath = path.join(featuresDir, featureFileName);
 
         // Ensure the `features` directory exists
@@ -110,7 +134,13 @@ async function promptForFeatureAndGenerate() {
 
         console.log(`Feature file successfully generated at: ${featureFilePath}`);
     } catch (error) {
-        console.error('Error generating the feature file:', error);
+        console.error('Error generating the feature file:');
+        if (error instanceof Error) {
+            console.error(`${error.name}: ${error.message}`);
+        } else {
+            console.error(error);
+        }
+        throw error;
     }
 }
 

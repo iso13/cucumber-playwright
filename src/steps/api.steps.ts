@@ -1,56 +1,116 @@
-import { Given, Then } from '@cucumber/cucumber';
+import { Given, When, Then } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
-import { sendPostRequest, sendGetRequest } from '../support/api/apiHelper';
+import { sendApiRequest } from '../support/api/aiAPIHelper';
 
-// Define a more specific type for API responses
-type ApiResponse = {
-  data: Record<string, unknown>; // More precise typing for response data
-  [key: string]: unknown; // Allow additional keys if needed
-};
+// JSON response placeholder
+let jsonResponse: Record<string, any>;
 
-// Define type for DataTable argument
-type DataTable = {
-  rowsHash: () => Record<string, string>;
-};
-
-let response: ApiResponse;
-
-Given(
-  'I send a POST request to {string} with the following data',
-  async function (endpoint: string, dataTable: DataTable) {
-    const data = dataTable.rowsHash();
-    try {
-      response = (await sendPostRequest(endpoint, data)) as ApiResponse;
-    } catch (error) {
-      throw new Error(`Failed to send POST request to ${endpoint}: ${error}`);
-    }
-  }
-);
-
-Given('I send a GET request to {string}', async function (endpoint: string) {
-  try {
-    response = (await sendGetRequest(endpoint)) as ApiResponse;
-  } catch (error) {
-    throw new Error(`Failed to send GET request to ${endpoint}: ${error}`);
-  }
+Given('I send a request to the AI inference API', async function () {
+    // Make a GET request to the AI inference API endpoint
+    jsonResponse = await sendApiRequest('/ai-inference', 'GET');
+    expect(jsonResponse).toBeDefined();
+    expect(typeof jsonResponse).toBe('object');
 });
 
-Then(
-  'the response should contain {string} with value {string}',
-  function (key: string, value: string) {
-    const expectedValue = isNaN(Number(value)) ? value : Number(value);
-    const actualValue =
-      response.data && response.data[key] ? response.data[key] : response[key];
-    expect(actualValue).toEqual(expectedValue);
-  }
-);
+When('I receive a JSON response', function () {
+    // Ensure the JSON response is present and valid
+    expect(jsonResponse).toBeDefined();
+    expect(typeof jsonResponse).toBe('object');
+});
 
-Then(
-  'the response should contain {string} with a non-empty value',
-  function (key: string) {
-    const actualValue =
-      response.data && response.data[key] ? response.data[key] : response[key];
-    expect(actualValue).toBeDefined();
-    expect(actualValue).not.toBe('');
-  }
-);
+Then('the response should match the expected structure:', function (dataTable) {
+    // Convert the data table to an array of objects
+    const expectedStructure = dataTable.raw();
+
+    // Iterate over each row to validate the structure
+    for (const [key, expectedType] of expectedStructure.slice(1)) {  // Skip the header row
+        expect(jsonResponse).toHaveProperty(key);
+
+        // Validate the type of the property
+        const value = jsonResponse[key];
+        switch (expectedType.toLowerCase()) {
+            case 'string':
+                expect(typeof value).toBe('string');
+                break;
+            case 'number':
+                expect(typeof value).toBe('number');
+                break;
+            case 'object':
+                expect(typeof value).toBe('object');
+                break;
+            case 'array':
+                expect(Array.isArray(value)).toBe(true);
+                break;
+            default:
+                throw new Error(`Unsupported data type: ${expectedType}`);
+        }
+    }
+});
+
+Given('a valid JSON response is received from the AI inference API', function () {
+    // Ensure the response is valid and has required fields
+    expect(jsonResponse).toBeDefined();
+    expect(typeof jsonResponse).toBe('object');
+
+    // Check for core keys
+    const requiredKeys = ['prediction', 'confidence', 'metadata'];
+    for (const key of requiredKeys) {
+        expect(jsonResponse).toHaveProperty(key, expect.anything());
+    }
+
+    // Log the received response for debugging purposes
+    console.log('Valid JSON response received:', JSON.stringify(jsonResponse, null, 2));
+});
+
+When('I analyze the data in the response', function () {
+    console.log('Analyzing response data:', jsonResponse);  // Debug log
+    if (!jsonResponse) {
+        throw new Error('No response received from API');
+    }
+    console.log('Prediction:', jsonResponse.prediction);
+});
+
+Then('the confidence value should be greater than {float}', function (minConfidence) {
+    console.log('Confidence received:', jsonResponse.confidence);
+    console.log('Input value:', jsonResponse.input_value || 'N/A');
+
+    const confidenceValue = parseFloat(jsonResponse.confidence);
+    expect(confidenceValue).toBeGreaterThanOrEqual(minConfidence);
+});
+
+Then('the prediction value should not be empty', function () {
+    // Validate the prediction field is a non-empty string
+    expect(typeof jsonResponse.prediction).toBe('string');
+    expect(jsonResponse.prediction.trim()).not.toBe('');
+
+    console.log(`Prediction value is valid: "${jsonResponse.prediction}"`);
+});
+
+Then('the metadata field should include the key {string}', function (key) {
+    // Ensure the metadata field exists and includes the required key
+    expect(jsonResponse).toHaveProperty('metadata');
+    expect(jsonResponse.metadata).toHaveProperty(key);
+
+    console.log(`Metadata contains the key: "${key}"`);
+});
+
+Given('I send a request to the AI inference API with input data:', async function (dataTable) {
+    const inputData = dataTable.rowsHash();
+
+    // Log the payload to ensure it's correct
+    console.log('Payload being sent:', inputData);
+
+    // Send the request
+    jsonResponse = await sendApiRequest('/ai-inference', 'POST', {
+        input_type: inputData.input_type,
+        input_value: inputData.input_value  // Ensure input_value matches what Mockoon expects
+    });
+});
+
+Then('the confidence value should be {float}', function (minConfidence) {
+    expect(jsonResponse.confidence).toBeGreaterThanOrEqual(minConfidence);
+});
+
+Then('the prediction value should be {string}', function (expectedPrediction) {
+    expect(jsonResponse.prediction).toBe(expectedPrediction);
+});

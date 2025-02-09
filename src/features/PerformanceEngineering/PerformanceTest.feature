@@ -4,7 +4,7 @@ Feature: Performance Test
   I want to be able run performnace test
   So I can validate the performance of the application
 
-  #Leverages Grafana k6
+  #Leverages Grafana/Promethous/k6
 
   Scenario: Perform load test on GET /posts endpoint
     Given I perform a load test on the "/posts" endpoint using the "GET" method

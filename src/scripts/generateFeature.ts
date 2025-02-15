@@ -1,83 +1,148 @@
-import inquirer from 'inquirer';
+import OpenAI from 'openai';
+import dotenv from 'dotenv';
 import path from 'path';
 import { writeFile, ensureDir } from 'fs-extra';
-import { generateGherkinPrompt } from '../support/ai/aiHelper';
+import inquirer from 'inquirer';
 
-const CONFIG = {
-    FEATURE_EXT: '.feature',
-    FEATURES_DIR: '../features'
-} as const;
+// Load environment variables from the .env file
+dotenv.config();
 
-/**
- * Converts a string to lower camel case.
- */
-function toLowerCamelCase(input: string): string {
-    return input.replace(/\s+(.)/g, (_, char) => char.toUpperCase()).replace(/^\w/, (c) => c.toLowerCase());
-}
+// Initialize OpenAI client
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY, // Ensure API key is set
+});
 
-/**
- * Sanitizes a string for use as a file name.
- */
-function sanitizeFileName(input: string): string {
-    return input.replace(/[^a-zA-Z0-9]/g, '').replace(/\s+/g, '');
-}
+const FEATURES_DIR = path.resolve(__dirname, '../../src/features');
+const STEPS_DIR = path.resolve(__dirname, '../../src/steps');
 
-/**
- * Generates a structured prompt for OpenAI to create a Scalability & Latency feature.
- */
-function generateAIPrompt(featureTitle: string): string {
-    const lowerCamelCaseTag = toLowerCamelCase(featureTitle);
-    return `
-        Generate a Cucumber BDD feature file for **${featureTitle}**.
+console.log('🚀 Starting Feature Generation...');
 
-        **Guidelines:**
-        - Use the format **"As a [role], I want to [goal], So that I can [benefit]."**
-        - Include 3 **realistic test scenarios** that measure:
-          1. **Model inference speed under normal load (e.g., 100 requests/sec)**
-          2. **Performance degradation under high load (e.g., 10,000 concurrent users)**
-          3. **Auto-scaling effectiveness (e.g., doubling the request volume)**
-        - Ensure quantifiable conditions (e.g., expected latency in milliseconds).
-        - The output should be **formatted correctly for Cucumber BDD**.
-    `;
-}
-
-/**
- * Generates a feature file with AI-generated Gherkin content.
- */
 async function promptForFeatureAndGenerate() {
+    console.log('✅ Script started...');
+
     try {
-        const { featureTitle } = await inquirer.prompt([
+        console.log('🔍 Checking if inquirer prompt runs...');
+        const answers = await inquirer.prompt([
             {
                 type: 'input',
                 name: 'featureTitle',
                 message: 'Enter the feature title:',
-                default: 'Scalability & Latency Testing for AI Model'
+                validate: (input: string) => input.trim() ? true : 'Feature title cannot be empty.',
+            },
+            {
+                type: 'input',
+                name: 'scenarioCount',
+                message: 'Enter the number of scenarios (default 2, max 6):',
+                default: '2',
+                validate: (input: string) => {
+                    const num = parseInt(input, 10);
+                    return (num >= 2 && num <= 6) ? true : 'Please enter a number between 2 and 6.';
+                }
             }
         ]);
 
-        console.log('Generating AI-driven Gherkin content...');
-        const aiPrompt = generateAIPrompt(featureTitle);
-        let gherkinContent = await generateGherkinPrompt(aiPrompt);
+        console.log('✅ User entered:', answers.featureTitle, 'Scenarios:', answers.scenarioCount);
+        
+        const featureTitle: string = answers.featureTitle;
+        const scenarioCount: number = parseInt(answers.scenarioCount, 10);
+        const lowerCamelCaseTag = featureTitle.replace(/\s+(.)/g, (_, char) => char.toUpperCase()).replace(/^./, str => str.toLowerCase());
+        
+        console.log('🔄 Sending request to OpenAI...');
+        let gherkinContent: string = await generateGherkinPrompt(`Generate a Cucumber BDD feature file titled "${featureTitle}" with ${scenarioCount} scenarios.`);
 
-        // Ensure clean formatting
-        gherkinContent = gherkinContent.replace(/```gherkin|```/g, '').trim();
+        console.log('✅ OpenAI Response:', gherkinContent);
 
-        // Ensure only one "Feature:" title remains
-        gherkinContent = gherkinContent.replace(/Feature: .+\n/g, '').trim();
-        gherkinContent = `@${toLowerCamelCase(featureTitle)}\nFeature: ${featureTitle}\n\n${gherkinContent}`;
+        // Remove duplicate Feature title if present
+        gherkinContent = gherkinContent.replace(/^Feature: .+\n/i, '').trim();
 
-        const featuresDir = path.resolve(__dirname, CONFIG.FEATURES_DIR);
-        const featureFileName = `${sanitizeFileName(featureTitle)}${CONFIG.FEATURE_EXT}`;
-        const featureFilePath = path.join(featuresDir, featureFileName);
+        // Ensure feature title and tag are included only once
+        gherkinContent = `@${lowerCamelCaseTag}\nFeature: ${featureTitle}\n\n${gherkinContent}`;
 
-        await ensureDir(featuresDir);
+        console.log('📁 Saving feature file...');
+        const featureFilePath = path.join(FEATURES_DIR, `${featureTitle.replace(/\s+/g, '')}.feature`);
+
+        await ensureDir(FEATURES_DIR);
         await writeFile(featureFilePath, gherkinContent, 'utf8');
 
-        console.log(`✅ Feature file generated: ${featureFilePath}`);
+        console.log(`✅ Feature file saved: ${featureFilePath}`);
+        
+        // Generate step definitions
+        console.log('🔄 Generating step definitions...');
+        let stepDefinitions: string = await generateStepDefinitions(gherkinContent);
+        
+        // Ensure generated step definitions use this.page instead of importing page from Playwright
+        stepDefinitions = stepDefinitions.replace(/import \{ page \} from 'playwright';\n?/g, '');
+        stepDefinitions = stepDefinitions.replace(/await page\./g, 'await this.page?.');
+        
+        // Ensure 'And' is replaced with the previous step's keyword for Cucumber TypeScript compatibility
+        stepDefinitions = stepDefinitions.replace(/^(And)\(/gm, (match, p1, offset, string) => {
+            const previousKeywordMatch = string.substring(0, offset).match(/(Given|When|Then)\(/g);
+            return previousKeywordMatch ? previousKeywordMatch[previousKeywordMatch.length - 1] : 'When';
+        });
+
+        const stepFilePath = path.join(STEPS_DIR, `${lowerCamelCaseTag}.steps.ts`);
+
+        await ensureDir(STEPS_DIR);
+        await writeFile(stepFilePath, stepDefinitions, 'utf8');
+        console.log(`✅ Step definitions saved: ${stepFilePath}`);
     } catch (error) {
-        console.error('❌ Error generating the feature file:', error);
+        console.error('❌ Error in script:', error);
     }
 }
 
-// Execute feature generation
+async function generateGherkinPrompt(prompt: string): Promise<string> {
+    try {
+        console.log('🔄 Sending request to OpenAI...');
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 1500
+        });
+
+        let content = response.choices[0]?.message?.content || '';
+        content = content.replace(/```gherkin|```/g, '').trim();
+
+        console.log('✅ Gherkin content successfully generated.');
+        return content;
+    } catch (error) {
+        console.error('❌ Error generating Gherkin content:', error);
+        throw new Error('Failed to generate content from OpenAI.');
+    }
+}
+
+async function generateStepDefinitions(gherkinContent: string): Promise<string> {
+    try {
+        console.log('🔄 Generating step definitions from AI...');
+        
+        const aiPrompt = `Convert the following Gherkin scenarios into TypeScript Cucumber step definitions:
+
+        ${gherkinContent}
+
+        Use Playwright for UI interactions where applicable.
+        Ensure that the generated step definitions use 'this.page' instead of importing 'page' from Playwright.
+        Format the output correctly, and do not include any additional comments, explanations, or instructions.
+        Ensure that every 'Then' step in the feature file has a corresponding step definition.
+        Ensure that a step that has an 'And' in the step will take the previous step keyword ('Given', 'When', or 'Then') and replace 'And' with the correct keyword in step definitions for compatibility with Cucumber TypeScript.`;
+
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: aiPrompt }],
+            temperature: 0.2,
+            max_tokens: 2000
+        });
+
+        let stepDefinitions = response.choices[0]?.message?.content || '';
+        
+        // Cleanup formatting issues
+        stepDefinitions = stepDefinitions.replace(/```typescript|```/g, '').trim();
+        
+        console.log('✅ Step definitions successfully generated.');
+        return stepDefinitions;
+    } catch (error) {
+        console.error('❌ Error generating step definitions:', error);
+        throw new Error('Failed to generate step definitions from OpenAI.');
+    }
+}
+
 promptForFeatureAndGenerate();

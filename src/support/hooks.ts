@@ -1,44 +1,77 @@
-// hooks.ts
-import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber';
-import { fixture } from './pageFixture';
+import { Before, After, Status } from '@cucumber/cucumber';
+import { Browser, BrowserContext, Page, chromium } from '@playwright/test';
 import { CustomWorld } from './world';
+import { execSync } from 'child_process';
+import fs from 'fs-extra';
+import path from 'path';
 
-setDefaultTimeout(10 * 1000); // Set the default timeout for steps to 10 seconds
+// Global browser instances
+let browser: Browser;
+let context: BrowserContext;
+let page: Page;
 
-// BeforeAll hook: Launch the browser once before any tests run
-BeforeAll(async function () {
-  await fixture.initialize(); // Initialize browser only once before all tests
-});
-
-// Before hook: Set up a new context and page for each scenario to ensure test isolation
+// 🎬 Before Scenario: Launch Browser and Ensure Scenario Name is Available
 Before(async function (this: CustomWorld) {
-  await fixture.initialize(); // Re-use existing browser, create a new context and page
-  this.page = fixture.page; // Assign the page to the Cucumber world for scenario-specific access
+    const scenarioName = this.pickle?.name ?? 'Unknown Scenario';
+    console.log(`🚀 Starting scenario: ${scenarioName}`);
+
+    // Launch Playwright browser
+    browser = await chromium.launch({ headless: true });
+    context = await browser.newContext();
+    page = await context.newPage();
+    this.page = page;
 });
 
-// After hook: Take a screenshot if a scenario fails, then close the context to ensure isolation
-After(async function ({ pickle, result }) {
-  if (result?.status === Status.FAILED && fixture.page) {
+// 🚀 Before @performance: Run K6 Load Test Automatically
+Before({ tags: '@performance' }, function () {
+    const reportDir = 'reports/performance';
+    fs.ensureDirSync(reportDir);  // Ensure report directory exists
+
+    console.log('⚙️ Running K6 load test...');
     try {
-      const img = await fixture.page.screenshot({
-        path: `./reports/screenshots/${pickle.name}.png`,
-        type: 'png',
-      });
-      this.attach(img, 'image/png'); // Attach the screenshot to the Cucumber report
+        execSync(`k6 run --env REPORT_PATH=${reportDir}/ src/support/performance/loadTest.js`, { stdio: 'inherit' });
+        console.log(`✅ K6 load test completed. Reports are saved in ${reportDir}`);
     } catch (error) {
-      console.error('Error taking screenshot:', error);
+        console.error('❌ Load test failed:', error);
+        throw new Error('K6 load test failed');
     }
-  }
-
-  // Close the context and reset page after each scenario to avoid test interference
-  if (fixture.context) {
-    await fixture.context.close(); // Close the context to release resources
-    fixture.context = undefined; // Reset context to ensure a new one for the next scenario
-    fixture.page = undefined; // Reset page reference to ensure a fresh page is used
-  }
 });
 
-// AfterAll hook: Close the browser after all tests have completed to clean up resources
-AfterAll(async function () {
-  await fixture.close(); // Final cleanup to ensure no open browsers remain
+// 📸 After Scenario: Capture Screenshot if Failed
+After(async function (this: CustomWorld, scenario) {
+    const scenarioName = this.pickle?.name ?? 'Unknown Scenario';
+    console.log(`📝 Finished scenario: ${scenarioName}`);
+
+    if (scenario.result?.status === Status.FAILED && this.page) {
+        const screenshotPath = `reports/screenshots/failed_${scenarioName.replace(/ /g, '_')}.png`;
+        await this.page.screenshot({ path: screenshotPath });
+        this.attach(fs.readFileSync(screenshotPath), 'image/png');
+        console.log(`📸 Screenshot saved for failed scenario: ${screenshotPath}`);
+    }
+
+    // Cleanup
+    if (this.page) {
+        await this.page.close();
+        await context.close();
+        await browser.close();
+    }
+});
+
+// 🧹 After All: Ensure Clean Reports Directory
+After(async function () {
+    const reportsDir = 'reports/';
+    fs.ensureDirSync(reportsDir);
+
+    // Move Playwright screenshots (if any) to the reports directory
+    const testResultsDir = '.playwright/test-results';
+    if (fs.existsSync(testResultsDir)) {
+        const screenshotFiles = fs.readdirSync(testResultsDir).filter(file => file.endsWith('.png'));
+
+        for (const file of screenshotFiles) {
+            const sourcePath = path.join(testResultsDir, file);
+            const targetPath = path.join(reportsDir, 'screenshots', file);
+            fs.moveSync(sourcePath, targetPath, { overwrite: true });
+            console.log(`📁 Moved screenshot to: ${targetPath}`);
+        }
+    }
 });

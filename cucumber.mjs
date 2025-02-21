@@ -1,10 +1,8 @@
-// cucumber.mjs
-
-import isCI from "is-ci"; // Import the is-ci module to check if the code is running in a CI environment
+import isCI from "is-ci";
 
 const config = {
     paths: [process.env.FEATURE_PATH || 'src/features/**/*.feature'],
-    requireModule: ['ts-node/register'], // Enables TypeScript support
+    requireModule: ['ts-node/register'],
     require: [
         process.env.STEP_PATH || 'src/steps/**/*.steps.ts',
         'src/support/*.ts',
@@ -12,12 +10,15 @@ const config = {
     strict: true,
     format: [
         'progress',
-        'json:reports/cucumber_report.json',
-        'html:reports/report.html',
+        'json:reports/cucumber/cucumber_report.json',
+        'html:reports/cucumber/cucumber_report.html',
+        'junit:reports/cucumber/cucumber_report.xml'
     ],
     formatOptions: { snippetInterface: 'async-await' },
     worldParameters: {},
-    retry: isCI ? 1 : 0,
+    retry: process.env.RETRY || (isCI ? 1 : 0),
+    parallel: process.env.PARALLEL || 1,
+    tags: process.env.TAGS || '',
 };
 
 export default config;

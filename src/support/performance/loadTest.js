@@ -1,66 +1,48 @@
-// Import K6's HTTP module for sending HTTP requests, check for validations, and sleep for delays
 import http from "k6/http";
 import { check, sleep } from "k6";
-
-// Import HTML report generator for K6 from an external source
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 
-// Retrieve test parameters from environment variables or set defaults
-const vus = __ENV.VUS ? parseInt(__ENV.VUS) : 1; // Default to 1 virtual user if VUS is not provided
-const duration = __ENV.DURATION ? __ENV.DURATION : "1s"; // Default to 1 second if DURATION is not provided
-const endpoint = __ENV.ENDPOINT || "/"; // Default to root if ENDPOINT is not provided
-const method = __ENV.METHOD || "GET"; // Default to GET if METHOD is not provided
+// Environment variables for flexible test parameters
+const vus = __ENV.VUS ? parseInt(__ENV.VUS) : 1;
+const duration = __ENV.DURATION ? __ENV.DURATION : "5s";
+const endpoint = __ENV.ENDPOINT || "/posts";
+const method = __ENV.METHOD || "GET";
+const reportPath = __ENV.REPORT_PATH || "reports/performance/";
 
-// Log the test parameters to confirm they are set correctly
-console.log(`Running load test with ${vus} virtual users for ${duration}`);
-console.log(`Endpoint: ${endpoint}`);
-console.log(`HTTP Method: ${method}`);
+console.log(`🚀 Running K6 load test with ${vus} VUs for ${duration} on ${endpoint}`);
 
-// Export K6 test options, using dynamically set VUS and DURATION, and define performance thresholds
+// K6 test options
 export let options = {
   vus: vus,
   duration: duration,
   thresholds: {
-    http_req_duration: ["avg<200", "p(95)<300"], // Set thresholds: average response time < 200ms, 95th percentile < 300ms
-    checks: ["rate>0.99"], // Require 99% of checks to pass
+    http_req_duration: ["avg<200", "p(95)<300"],
+    checks: ["rate>0.99"],
   },
 };
 
-// Default function executed by each virtual user, performing the main HTTP request and checks
 export default function () {
   let res;
 
-  // Send an HTTP request based on the specified method
   if (method.toUpperCase() === "GET") {
     res = http.get(`https://jsonplaceholder.typicode.com${endpoint}`);
   } else {
-    console.error(`Unsupported HTTP method: ${method}`);
+    console.error(`❌ Unsupported HTTP method: ${method}`);
     return;
   }
 
-  // Validate the response status and timing with checks
-  const resultCheck = check(res, {
-    "status is 200": (r) => r.status === 200, // Check if the response status is 200
-    "response time < 1000ms": (r) => r.timings.duration < 1000, // Check if the response time is under 1000ms
+  check(res, {
+    "status is 200": (r) => r.status === 200,
+    "response time < 1000ms": (r) => r.timings.duration < 1000,
   });
 
-  // Log an error message if any check fails, including response status and duration
-  if (!resultCheck) {
-    console.error(
-      `One or more checks failed. Response status: ${res.status}, Response time: ${res.timings.duration}ms`,
-    );
-  }
-
-  sleep(1); // Pause execution for 1 second between iterations to simulate real user behavior
+  sleep(1);
 }
 
-// Function to handle the test summary and generate both JSON and HTML reports
+// Generate reports automatically
 export function handleSummary(data) {
   return {
-    // Save JSON summary report to the specified file path
-    "reports/performance/loadTest.json": JSON.stringify(data, null, 2),
-
-    // Generate an HTML report using the external HTML report generator
-    "reports/performance/loadTest.html": htmlReport(data),
+    [`${reportPath}loadTest.json`]: JSON.stringify(data, null, 2),
+    [`${reportPath}loadTest.html`]: htmlReport(data),
   };
 }

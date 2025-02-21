@@ -6,12 +6,14 @@
   "license": "MIT",
   "description": "Cucumber Playwright Automation Framework",
   "scripts": {
-    "gherkin-lint": "npx gherkin-lint",
-    "lint": "eslint 'src/**/*.ts'",
+    "lint": "npm run lint:ts && npm run lint:gherkin",
+    "lint:ts": "eslint 'src/**/*.ts'",
+    "lint:gherkin": "npx tsc && node build/scripts/gherkin-lint.js",
     "prepReport": "rimraf reports traces && mkdir -p reports/screenshots reports/accessibility",
+    "clean:reports": "rm -rf reports && mkdir -p reports/screenshots reports/performance reports/a11y reports/cucumber reports/playwright reports/html",
     "cucumber": "cucumber-js --config cucumber.mjs --format cucumber-console-formatter --require \"src/steps/**/*.ts\"",
-    "cucumber:dev": "cross-env ENV=dev cucumber-js --config cucumber.mjs --format cucumber-console-formatter --require 'src/steps/**/*.ts'",
-    "cucumber:staging": "cross-env ENV=staging cucumber-js --config cucumber.mjs --format cucumber-console-formatter --require 'src/steps/**/*.ts'",
+    "cucumber:dev": "npm run clean:reports && cross-env ENV=dev npx cucumber-js --config cucumber.mjs --format cucumber-console-formatter --require 'src/steps/**/*.ts' && npm run report:generate",
+    "cucumber:staging": "npm run clean:reports && cross-env ENV=staging cucumber-js --config cucumber.mjs --format cucumber-console-formatter --require 'src/steps/**/*.ts'",
     "generate-feature": "ts-node src/scripts/generateFeatureFile.ts && npx gherkin-lint features/*.feature",
     "validate-k6-report": "cat reports/performance/loadTest.json | jq",
     "build": "npx tsc",
@@ -21,7 +23,10 @@
     "test:dev": "cross-env ENV=dev npx playwright test",
     "test:staging": "cross-env ENV=staging npx playwright test",
     "test": "cross-env ENV=qa npx playwright test",
-    "generate:feature": "ts-node src/scripts/generateFeature.ts"
+    "generate:feature": "ts-node src/scripts/generateFeature.ts",
+    "report:generate": "npx multiple-cucumber-html-reporter --reportDir reports/html --jsonDir reports/cucumber --reportName 'Consolidated Test Report' --displayDuration true",
+    "report:open": "open reports/html/index.html"
+
   },
   "engines": {
     "node": ">=20.0.0"
@@ -73,7 +78,7 @@
     "eslint-plugin-import": "2.31.0",
     "eslint-plugin-prettier": "5.2.1",
     "fs-extra": "11.2.0",
-    "gherkin-lint": "4.2.4",
+    "gherkin-lint": "^4.2.4",
     "husky": "9.1.6",
     "is-ci": "3.0.1",
     "lint-staged": "15.2.10",

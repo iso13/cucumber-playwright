@@ -4,6 +4,7 @@ import { Page } from 'playwright';
 import { AxeResults, Result } from 'axe-core';
 import { createHtmlReport } from 'axe-html-reporter';
 import { writeFileSync } from 'fs';
+import fs from 'fs-extra'; // Ensure directory exists
 
 // Declare the axe type in the global window object
 declare global {
@@ -47,6 +48,11 @@ When('I run the a11y check', async function () {
 Then('I should not see any violations', async function () {
   const results: AxeResults = await checka11y(this.page);
 
+  // Ensure the reports/a11y directory exists
+  const reportPath = 'reports/a11y/a11y-report.html';
+  fs.ensureDirSync('reports/a11y');
+
+  // Generate the HTML report inside the correct directory
   const reportHtml = createHtmlReport({
     results,
     options: {
@@ -54,8 +60,11 @@ Then('I should not see any violations', async function () {
     },
   });
 
-  writeFileSync('reports/a11y-report.html', reportHtml);
+  // Write the report to the correct path
+  writeFileSync(reportPath, reportHtml);
+  console.log(`✅ Accessibility report saved to: ${reportPath}`);
 
+  // Handle violations
   if (results.violations.length > 0) {
     const seriousViolations: Result[] = results.violations.filter(
       (v) => v.impact === 'serious'
@@ -63,7 +72,7 @@ Then('I should not see any violations', async function () {
 
     if (seriousViolations.length > 0) {
       throw new Error(
-        `A11y issues found: ${JSON.stringify(seriousViolations, null, 2)}`
+        `❌ A11y issues found: ${JSON.stringify(seriousViolations, null, 2)}`
       );
     }
   }

@@ -1,13 +1,13 @@
 {
-  "file-name": ["on", { "style": "PascalCase"}],
-  "no-files-without-scenarios" : "on",
+  "file-name": ["on", { "style": "PascalCase" }],
+  "no-files-without-scenarios": "on",
   "no-empty-file": "on",
-  "max-scenarios-per-file": ["on", {"maxScenarios": 10, "countOutlineExamples": true}],
-  "name-length" : ["on", { "Feature": 100, "Scenario": 100, "Step": 150 }],
+  "max-scenarios-per-file": ["on", { "maxScenarios": 10, "countOutlineExamples": true }],
+  "name-length": ["on", { "Feature": 80, "Scenario": 80, "Step": 120 }],
   "no-unnamed-features": "on",
   "no-dupe-feature-names": "on",
   "no-dupe-scenario-names": ["on", "in-feature"],
-  "scenario-size": ["on", { "steps-length": { "Background": 10, "Scenario": 20 }}],
+  "scenario-size": ["on", { "steps-length": { "Background": 8, "Scenario": 15 } }],
   "no-unnamed-scenarios": "on",
   "no-scenario-outlines-without-examples": "on",
   "no-background-only-scenario": "on",
@@ -18,13 +18,14 @@
   "no-superfluous-tags": "on",
   "no-homogenous-tags": "on",
   "one-space-between-tags": "on",
-  "no-restricted-tags": ["on", {"tags": ["@focus", "@skip"]}],
+  "no-restricted-tags": ["on", { "tags": ["@focus", "@skip"] }],
   "no-trailing-spaces": "on",
   "no-multiple-empty-lines": "on",
   "no-unused-variables": "on",
-  "new-line-at-eof": "off",
-  "indentation" : [
-    "on", {
+  "new-line-at-eof": "on",
+  "indentation": [
+    "on",
+    {
       "Feature": 0,
       "Background": 4,
       "Scenario": 2,
@@ -32,5 +33,9 @@
       "Examples": 8,
       "example": 6
     }
-   ]
+  ],
+  "allowed-tags": ["on", { "tags": ["@wip", "@smoke", "@regression", "@accessibility"] }],
+  "tag-convention": ["on", { "convention": "^[a-z][a-zA-Z0-9]*$" }],
+  "no-inline-tags": "on",
+  "no-missing-placeholder": "on"
 }

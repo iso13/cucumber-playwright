@@ -1,20 +1,25 @@
-import { setWorldConstructor, World, IWorldOptions } from '@cucumber/cucumber';
-import { Page } from 'playwright';
+import { IWorldOptions, World, ITestCaseHookParameter } from '@cucumber/cucumber';
+import { BrowserContext, Page } from '@playwright/test';
 
-// Extend IWorldOptions to include pickle (without importing Pickle)
+// Extend IWorldOptions to include 'pickle'
 interface CustomWorldOptions extends IWorldOptions {
-    pickle?: any;  // Use 'any' because 'Pickle' is not exported from Cucumber
+    pickle: ITestCaseHookParameter['pickle'];
 }
 
 export class CustomWorld extends World {
-    page: Page | undefined;
-    pickle: any; // Store scenario metadata safely
+    page!: Page;
+    context!: BrowserContext;
+    scenarioName!: string;
+    pickle!: ITestCaseHookParameter['pickle'];
 
     constructor(options: CustomWorldOptions) {
         super(options);
-        this.page = undefined;
-        this.pickle = options.pickle;  // Assign pickle dynamically
+        this.pickle = options.pickle;
+        this.scenarioName = this.pickle?.name ?? 'Unknown Scenario';
+    }
+
+    // Log current scenario
+    logScenario(): void {
+        console.log(`🎬 Running scenario: ${this.scenarioName}`);
     }
 }
-
-setWorldConstructor(CustomWorld);

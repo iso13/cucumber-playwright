@@ -11,14 +11,14 @@ const workers = process.env.PLAYWRIGHT_WORKERS ? parseInt(process.env.PLAYWRIGHT
 export default defineConfig({
   testDir: './src/tests',
   retries: 1,
-  workers: 2,
+  workers: workers,
   timeout: 60000,
   reporter: [
     ['html', { outputFolder: 'reports/playwright', open: 'never' }],
     ['json', { outputFile: 'reports/playwright/playwright-report.json' }]
   ],
   use: {
-    headless: true,
+    headless: true,  // Always headless; the `hooks.ts` controls browser mode
     trace: 'on-first-retry',
     video: 'on',
     screenshot: 'only-on-failure'

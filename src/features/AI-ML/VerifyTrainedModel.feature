@@ -1,4 +1,4 @@
-@VerifyTrainedModel
+@VerifyTrainedModel @no-browser
 Feature: Verify Trained Model
   As an Engineer
   I need to be able to verify the prediction of a trained model

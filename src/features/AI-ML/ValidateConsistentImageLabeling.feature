@@ -1,4 +1,4 @@
-@ValidateConsistentImageLabeling
+@ValidateConsistentImageLabeling @no-browser
 Feature: Validate Correct Image Labeling
   As an Engineer
   I want to validate that images are correctly labeled as either “cat” or “dog”

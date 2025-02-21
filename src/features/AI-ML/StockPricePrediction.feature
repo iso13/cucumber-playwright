@@ -1,4 +1,4 @@
-@ssp
+@ssp @no-browser
 Feature: Stock Price Prediction
     As a financial analyst
     I want to predict the stock price for a given historical or future date

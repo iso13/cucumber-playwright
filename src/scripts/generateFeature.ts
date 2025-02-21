@@ -9,10 +9,10 @@ dotenv.config();
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY, // Ensure API key is set
+    apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Corrected Directories for Feature Files and Step Definitions
+// Directories for feature files and step definitions
 const FEATURES_DIR = path.resolve(__dirname, '../../src/features');
 const STEPS_DIR = path.resolve(__dirname, '../../src/steps');
 
@@ -46,14 +46,22 @@ async function promptForFeatureAndGenerate() {
         
         const featureTitle: string = answers.featureTitle.trim();
         const scenarioCount: number = parseInt(answers.scenarioCount, 10);
-        const lowerCamelCaseTag = featureTitle.replace(/\s+(.)/g, (_, char) => char.toUpperCase()).replace(/^./, str => str.toLowerCase());
+
+        // Generate lowerCamelCase tag from feature title
+        const lowerCamelCaseTag = featureTitle
+            .trim()
+            .replace(/[^a-zA-Z0-9\s]/g, '')
+            .toLowerCase()
+            .replace(/\s+(.)/g, (_, char) => char.toUpperCase());
+
+        console.log('🔖 Generated Tag:', lowerCamelCaseTag);
         
         console.log('🔄 Sending request to OpenAI for feature generation...');
         let gherkinContent: string = await generateGherkinPrompt(`Generate a Cucumber BDD feature file titled "${featureTitle}" with ${scenarioCount} scenarios.`);
 
         console.log('✅ OpenAI Response:', gherkinContent);
 
-        // Ensure unique Feature title and remove duplicate Feature: title if generated
+        // Clean up feature file content and add the tag
         gherkinContent = gherkinContent.replace(/^Feature: .+\n/i, '').trim();
         gherkinContent = `@${lowerCamelCaseTag}\nFeature: ${featureTitle}\n\n${gherkinContent}`;
 
@@ -72,7 +80,7 @@ async function promptForFeatureAndGenerate() {
         stepDefinitions = stepDefinitions.replace(/import \{ page \} from 'playwright';\n?/g, '');
         stepDefinitions = stepDefinitions.replace(/await page\./g, 'await this.page?.');
 
-        // Ensure 'And' steps inherit the correct keyword for compatibility
+        // Ensure 'And' steps inherit the correct keyword
         stepDefinitions = stepDefinitions.replace(/^(And)\(/gm, (match, p1, offset, string) => {
             const previousKeywordMatch = string.substring(0, offset).match(/(Given|When|Then)\(/g);
             return previousKeywordMatch ? previousKeywordMatch[previousKeywordMatch.length - 1] : 'When';
@@ -131,21 +139,20 @@ async function generateStepDefinitions(gherkinContent: string): Promise<string> 
            - **Buttons:** \`button:has-text("{buttonName}"), [aria-label="{buttonName}"]\`
            - **Links:** \`a:has-text("{linkText}")\`
 
-        4. **Use Playwright for UI interactions where applicable.**
-
-        5. **Ensure Step Definitions are in Declarative Style**
+        4. **Ensure Step Definitions are in Declarative Style:**
            - Focus on **what the step does, not how it works internally.**
            - Keep logic **modular and reusable**.
 
-        6. **Ensure the generated step definitions use 'this.page' instead of importing 'page' from Playwright.**
+        5. **Use 'this.page' instead of importing Playwright's page:**
            - Replace **'await page.'** with **'await this.page.'** for Cucumber compatibility.
 
-        7. **Ensure that every 'Then' step in the feature file has a corresponding step definition.**
-           - No missing test coverage.
+        6. **Ensure Complete Test Coverage:**
+           - Every 'Then' step in the feature file must have a corresponding step definition.
 
-        8. **Ensure that a step that has an 'And' in the step will take the previous step keyword ('Given', 'When', or 'Then') and replace 'And' with the correct keyword in step definitions for compatibility with Cucumber TypeScript.**
+        7. **Handle 'And' Steps:**
+           - Replace 'And' with the previous step keyword ('Given', 'When', or 'Then') for Cucumber TypeScript compatibility.
 
-        **Output Format Example:**
+        **Output Format Example (TypeScript Only):**
         \`\`\`typescript
         Then('I should see an error message {string}', async function (message: string) {
             const errorMessage = this.page.locator('#errorMessage');
@@ -163,7 +170,7 @@ async function generateStepDefinitions(gherkinContent: string): Promise<string> 
         });
         \`\`\`
 
-        Generate TypeScript step definitions following these Playwright best practices.`;
+        **IMPORTANT:** Only output valid TypeScript code. Do not include explanations, comments, or notes.`;
 
         const response = await openai.chat.completions.create({
             model: 'gpt-4',
@@ -173,7 +180,14 @@ async function generateStepDefinitions(gherkinContent: string): Promise<string> 
         });
 
         let stepDefinitions = response.choices[0]?.message?.content || '';
-        stepDefinitions = stepDefinitions.replace(/```typescript|```/g, '').trim();
+
+        // Filter out non-code content and clean output
+        stepDefinitions = stepDefinitions
+            .replace(/```typescript/g, '')   // Remove TypeScript code block markers
+            .replace(/```/g, '')             // Remove any closing markers
+            .replace(/Please note.*/gi, '')  // Remove "Please note" explanations
+            .replace(/This is a basic implementation.*/gi, '')
+            .trim();
 
         console.log('✅ Step definitions successfully generated.');
         return stepDefinitions;

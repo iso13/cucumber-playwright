@@ -8,7 +8,7 @@ Feature: Stock Price Prediction
     Given I have trained the stock price predictor with historical data
 
     Scenario: Predict future stock price based on user-provided date
-        When I predict the stock price for a future date "Dec 31 2025"
+        When I predict the stock price for a future date "Dec 31 2026"
         Then the predicted price should be displayed
 
     Scenario: Predict stock price for a specific historical date

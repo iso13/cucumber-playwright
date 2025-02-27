@@ -41,13 +41,13 @@ async function promptForFeatureAndGenerate() {
         const featureTitle = answers.featureTitle.trim();
         const scenarioCount = parseInt(answers.scenarioCount, 10);
         const lowerCamelCaseTag = featureTitle
-        .replace(/\s+(.)/g, (_: string, char: string) => char.toUpperCase())
-        .replace(/^./, (str: string) => str.toLowerCase());
+            .replace(/\s+(.)/g, (_: string, char: string) => char.toUpperCase())
+            .replace(/^./, (str: string) => str.toLowerCase());
         console.log('🔄 Requesting OpenAI for feature generation...');
         let gherkinContent = await generateGherkinPrompt(featureTitle, scenarioCount);
 
-        // Clean up duplicate "As an admin" and other unwanted lines
-        gherkinContent = cleanFeatureContent(gherkinContent, featureTitle, lowerCamelCaseTag);
+        // Ensure declarative steps
+        gherkinContent = enforceDeclarativeSteps(gherkinContent);
 
         const featureFilePath = path.join(FEATURES_DIR, `${featureTitle.replace(/\s+/g, '')}.feature`);
         await ensureDir(FEATURES_DIR);
@@ -55,7 +55,9 @@ async function promptForFeatureAndGenerate() {
         console.log(`✅ Feature file saved: ${featureFilePath}`);
 
         console.log('🔄 Generating TypeScript step definitions...');
-        const stepDefinitions = await generateStepDefinitions(gherkinContent);
+        let stepDefinitions = await generateStepDefinitions(gherkinContent);
+        stepDefinitions = cleanStepDefinitions(stepDefinitions);
+
         const stepFilePath = path.join(STEPS_DIR, `${lowerCamelCaseTag}.steps.ts`);
         await ensureDir(STEPS_DIR);
         await writeFile(stepFilePath, stepDefinitions, 'utf8');
@@ -65,24 +67,22 @@ async function promptForFeatureAndGenerate() {
     }
 }
 
-function cleanFeatureContent(content: string, featureTitle: string, tag: string): string {
-    const userStory = `As an admin,\nI want to be able to ${featureTitle.toLowerCase()},\nSo that I can manage users effectively.`;
-
-    const lines = content.split('\n').filter(line => 
-        !/^Feature: /i.test(line.trim()) &&
-        !/^As an admin,/i.test(line.trim()) &&
-        !/^I want to/i.test(line.trim()) &&
-        !/^So that/i.test(line.trim())
-    );
-
-    return `@${tag}\nFeature: ${featureTitle}\n\n${userStory}\n\n${lines.join('\n').trim()}`;
+function enforceDeclarativeSteps(content: string): string {
+    return content
+        .replace(/When I go to the "(.*?)" page/gi, 'Given the "$1" page is displayed')
+        .replace(/And I fill in the "(.*?)" with "(.*?)"/gi, 'When the user provides "$2" for "$1"')
+        .replace(/And I click on the "(.*?)" button/gi, 'When the user submits the form')
+        .replace(/Then I should see a confirmation message "(.*?)"/gi, 'Then a confirmation message "$1" should be displayed')
+        .replace(/Then I should see an error message "(.*?)"/gi, 'Then an error message "$1" should be displayed')
+        .replace(/And "(.*?)" should be listed in the system users/gi, 'Then the system should list "$1" as a user')
+        .replace(/And "(.*?)" should still be listed only once in the system users/gi, 'Then the system should maintain "$1" as a unique user');
 }
 
 async function generateGherkinPrompt(featureTitle: string, scenarioCount: number): Promise<string> {
     const prompt = `Generate a Cucumber BDD feature titled "${featureTitle}" with ${scenarioCount} unique scenarios.
 Ensure:
 1. A single user story under the Feature title.
-2. Clear, valid Gherkin scenarios without additional commentary.
+2. Clear, valid Gherkin scenarios using declarative steps.
 3. No duplicate "As an admin" or extra Feature titles.`;
 
     try {
@@ -94,7 +94,7 @@ Ensure:
         });
 
         let content = response.choices[0]?.message?.content || '';
-        return content.replace(/```gherkin|```/g, '').trim();
+        return enforceDeclarativeSteps(content.replace(/```gherkin|```/g, '').trim());
     } catch (error) {
         console.error('❌ Error generating Gherkin content:', error);
         throw new Error('Failed to generate Gherkin content.');
@@ -107,6 +107,7 @@ Ensure:
 1. Only valid TypeScript code.
 2. No explanations, comments, or extra text.
 3. Use 'this.page' for Playwright interactions.
+4. Maintain declarative step structure.
 
 Gherkin Scenarios:
 ${gherkinContent}
@@ -122,11 +123,15 @@ Output TypeScript code only.`;
         });
 
         let stepDefinitions = response.choices[0]?.message?.content || '';
-        return stepDefinitions.replace(/```typescript|```/g, '').trim();
+        return cleanStepDefinitions(stepDefinitions);
     } catch (error) {
         console.error('❌ Error generating step definitions:', error);
         throw new Error('Failed to generate step definitions.');
     }
+}
+
+function cleanStepDefinitions(content: string): string {
+    return content.replace(/.*Below are the TypeScript Cucumber step definitions.*|### Explanation:.*|### Notes:.*|```typescript|```/gs, '').trim();
 }
 
 promptForFeatureAndGenerate();
